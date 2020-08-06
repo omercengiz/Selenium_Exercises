@@ -1,8 +1,10 @@
-import browser
+from browser import Browser
 
-browser.Browser("https://www.instagram.com/")
-
-browser.time.sleep(1000)
-
-
-
+if __name__ == '__main__':
+    b = None
+    try:
+        b = Browser(username="kaanberkeugurlar", password="%k44nb3rk3%")
+    except Exception as E:
+        print(f'Exception => {E}')
+        if b:
+            b.driver.quit()

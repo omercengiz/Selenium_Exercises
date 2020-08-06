@@ -1,59 +1,79 @@
 from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as ec
 from webdriver_manager.chrome import ChromeDriverManager
-import time
+
 
 class Browser:
-    def __init__(self,link):
-        self.link = link
-        self.browser = webdriver.Chrome(ChromeDriverManager().install())
-        Browser.redirectInstagram(self)
+    def __init__(self, username=None, password=None):
+        assert username is not None, "Username has not been provided."
+        assert password is not None, "Password has not been provided."
 
+        self.login_link = "https://www.instagram.com/accounts/login/?source=auth_switcher"
+        self.homepage_link = "https://www.instagram.com/"
+        self.username = username
+        self.password = password
+        self.driver = webdriver.Chrome(ChromeDriverManager().install())
+        self.driver.implicitly_wait(5)
+        Browser._redirect_instagram(self)
 
-    def redirectInstagram(self):
+    def _redirect_instagram(self):
+        self.driver.get(self.login_link)
+        Browser._login(self)
 
-        self.browser.get(self.link)
-        time.sleep(2)
-        Browser.login(self)
-        Browser.getFollowers(self)
+        try:
+            self.driver.find_element_by_xpath("/html/body/div[4]/div/div/div/div[3]/button[2]").click()
+        except:
+            pass
 
-    def login(self):
-        username = self.browser.find_element_by_name("username")
-        password = self.browser.find_element_by_name("password")
+        Browser._get_followers(self)
 
-        username.send_keys("your_username")
-        password.send_keys("12345")
+    def _login(self):
+        username_section = self.driver.find_element_by_name("username")
+        password_section = self.driver.find_element_by_name("password")
 
+        username_section.send_keys(self.username)
+        password_section.send_keys(self.password)
 
-        loginBtn = self.browser.find_element_by_css_selector("#react-root > section > main > div > article > div > div:nth-child(1) > div > form > div:nth-child(4)")
-        loginBtn.click()
-        time.sleep(5)
-        self.browser.get(self.link)
+        login_button = self.driver.find_element_by_xpath('//*[@id="loginForm"]/div/div[3]/button')
+        login_button.click()
 
-    def getFollowers(self):
-        followers_link = self.browser.find_element_by_css_selector("#react-root > section > main > div > header > section > ul > li:nth-child(2) > a")
-        followers_link.click()
-        time.sleep(4)
+        # wait explicitly 5 seconds until the top bar is appeared..!
+        WebDriverWait(self.driver, 5).until(
+            ec.presence_of_element_located(
+                (By.XPATH, '//*[@id="react-root"]/section/nav/div[2]/div')
+            )
+        )
 
-        Browser.scrollDown(self)
+        self.driver.get(self.homepage_link + self.username)
 
-        followers = self.browser.find_elements_by_css_selector(".FPmhX.notranslate._0imsa")
-        for i in followers:
-            print(i.text)
+    def _get_followers(self):
+        followers_popup = self.driver.find_element_by_xpath(
+            '//*[@id="react-root"]/section/main/div/header/section/ul/li[2]/a'
+        )
+        followers_popup.click()
+        Browser._scroll_down(self)
 
+        followers = self.driver.find_elements_by_css_selector(".FPmhX.notranslate._0imsa")
+        for follower in followers:
+            print(follower.text)
 
-    def scrollDown(self):
-        scroll_Down ="""
+    def _scroll_down(self):
+        # breakpoint()
+        # TODO scrollTo down part doesn't work properly all the time. Maintain!!
+        scroll_down_script = """
         page = document.querySelector(".isgrP");
         page.scrollTo(0,page.scrollHeight);
         var EndPage = page.scrollHeight;
         return EndPage;
         """
-
-        EndPage = self.browser.execute_script(scroll_Down)
+        end_page = self.driver.execute_script(scroll_down_script)
 
         while True:
-            ending_page = EndPage
-            time.sleep(1)
-            EndPage = self.browser.execute_script(scroll_Down)
-            if ending_page == EndPage:
+            print(end_page)
+            temp = end_page
+            end_page = self.driver.execute_script(scroll_down_script)
+
+            if temp == end_page:
                 break
